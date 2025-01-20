@@ -1,0 +1,98 @@
+---
+- name: Comprehensive Setup Playbook
+  hosts: localhost
+  become: true
+  
+  pre_tasks:
+    - name: Verify internet connection
+      command: ping -c 4 google.com
+      register: ping_result
+      ignore_errors: true
+
+    - name: Fail if no internet connection
+      fail:
+        msg: "No internet connection detected."
+      when: ping_result.rc != 0
+
+    - name: Ensure python3-pip and ansible-core are installed via dnf
+      dnf:
+        name:
+          - python3-pip
+          - ansible-core
+          - git
+        state: present
+
+    - name: Clone GitHub repository
+      git:
+        repo: 'https://github.com/nickarellano/ee-containers'
+        dest: /tmp/ee-containers
+
+  vars_prompt:
+    - name: rh_username
+      prompt: "Enter your Red Hat CDN username"
+      private: false
+    - name: rh_password
+      prompt: "Enter your Red Hat CDN password"
+      private: true
+
+  tasks:
+    - name: Login to registry.redhat.io
+      ansible.builtin.command:
+        cmd: "podman login -u {{ rh_username }} -p {{ rh_password }} registry.redhat.io"
+      changed_when: false
+    
+    - name: Check if requirements.txt exists
+      ansible.builtin.stat:
+        path: /tmp/ee-containers/requirements.txt
+      register: requirements_txt
+
+    - name: Install Python requirements from requirements.txt if exists
+      ansible.builtin.command:
+        cmd: /usr/bin/python3 -m pip install --ignore-installed -r /tmp/ee-containers/requirements.txt
+      when: requirements_txt.stat.exists
+
+    - name: Check if requirements.yaml exists
+      ansible.builtin.stat:
+        path: /tmp/ee-containers/requirements.yaml
+      register: requirements_yaml
+
+    - name: Ensure ansible-galaxy collections in requirements.yaml are installed
+      ansible.builtin.command:
+        cmd: "ansible-galaxy collection install -r /tmp/ee-containers/requirements.yaml"
+      when: requirements_yaml.stat.exists
+
+    - name: List available environments
+      ansible.builtin.find:
+        paths: /tmp/ee-containers/environments
+        recurse: no
+        file_type: directory
+      register: env_dirs
+
+    - name: "Select an environment:"
+      pause:
+        prompt: |
+          Select an environment:
+
+          {%- for item in env_dirs.files -%}
+          {{ loop.index }}. {{ item.path | basename }}
+          {% endfor %}
+      register: env_selection
+
+    - name: Set selected environment
+      ansible.builtin.set_fact:
+        selected_env: "{{ env_dirs.files[env_selection.user_input | int - 1].path }}"
+        env_basename: "{{ env_dirs.files[env_selection.user_input | int - 1].path | basename }}"
+
+    - name: Build image using ansible-builder based on user's selection
+      ansible.builtin.shell:
+        cmd: "/usr/local/bin/ansible-builder build -f {{ selected_env }}/execution-environment.yaml --context /tmp/ee-containers"
+      register: build_output
+      changed_when: false
+
+    - name: Tag the image with the new name
+      ansible.builtin.command:
+        cmd: "podman tag ansible-execution-env:latest ansible-ee-{{ env_basename }}:latest"
+
+    - name: Show build output
+      ansible.builtin.debug:
+        var: build_output.stdout
