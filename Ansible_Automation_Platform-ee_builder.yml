@@ -1,5 +1,5 @@
 ---
-- name: Comprehensive Setup Playbook
+- name: EE Creation Playbook
   hosts: localhost
   become: true
   
