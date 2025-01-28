@@ -37,7 +37,7 @@ additional_build_steps:
   prepend_galaxy:
     # Add custom ansible.cfg which defines collection install sources
     - COPY _build/configs/ansible.cfg /etc/ansible/ansible.cfg
-   append:
+   append_final:
     - RUN microdnf install -y --enablerepo=rhocp-4.10-for-rhel-8-x86_64-rpms --releasever=8.6 openshift-clients
     - RUN ansible-galaxy collection install redhat.openshift
 
