@@ -1,0 +1,5 @@
+python3-devel
+oniguruma-devel
+libonig-dev
+which
+zsh

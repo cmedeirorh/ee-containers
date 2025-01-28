@@ -1,0 +1,13 @@
+---
+collections:
+  - name: community.general
+  - name: community.vmware
+  - name: vmware.vmware_rest
+  - name: cloud.vmware_ops
+  - name: vmware.vmware
+  - name: ansible.hub
+  - name: infra.aap_utilities
+  - name: infra.controller_configuration
+  - name: infra.aap_configuration
+  - name: containers.podman
+  # - name: oneidentity.safeguardcollection
