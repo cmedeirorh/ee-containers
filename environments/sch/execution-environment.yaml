@@ -3,14 +3,14 @@ version: 3
  
 images:
   base_image:
-    name: svm2898pdv.csdev.corp/ansible-automation-platform-24/ee-minimal-rhel9:latest
+    name: registry.redhat.io/ansible-automation-platform/ee-minimal-rhel9:2.18.1-4
  
 build_arg_defaults:
   ANSIBLE_GALAXY_CLI_COLLECTION_OPTS: '-c'
  
 dependencies:
-  galaxy: collections/requirements.yml
-  python: python/requirements.txt
+  galaxy: requirements.yml
+  python: requirements.txt
   system: bindep.txt
  
 options:
@@ -19,8 +19,8 @@ options:
  
 additional_build_files:
   # Can be used to resolve collections from private automation hub
-  - src: ansible.cfg
-    dest: configs
+  #- src: ansible.cfg
+  #  dest: configs
       # - src: rpms/openshift-clients-4.12.0-202307200611.p0.g49844f7.assembly.stream.el8.x86_64.rpm
       # dest: rpms
  
