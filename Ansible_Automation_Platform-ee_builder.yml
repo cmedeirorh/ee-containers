@@ -52,15 +52,15 @@
         cmd: /usr/bin/python3 -m pip install --ignore-installed -r /tmp/ee-containers/requirements.txt
       when: requirements_txt.stat.exists
 
-    - name: Check if requirements.yaml exists
-      ansible.builtin.stat:
-        path: /tmp/ee-containers/requirements.yaml
-      register: requirements_yaml
+#    - name: Check if requirements.yaml exists
+#      ansible.builtin.stat:
+#        path: /tmp/ee-containers/requirements.yaml
+#      register: requirements_yaml
 
-    - name: Ensure ansible-galaxy collections in requirements.yaml are installed
-      ansible.builtin.command:
-        cmd: "ansible-galaxy collection install -r /tmp/ee-containers/requirements.yaml"
-      when: requirements_yaml.stat.exists
+#    - name: Ensure ansible-galaxy collections in requirements.yaml are installed
+#      ansible.builtin.command:
+#        cmd: "ansible-galaxy collection install -r /tmp/ee-containers/requirements.yaml"
+#      when: requirements_yaml.stat.exists
 
     - name: List available environments
       ansible.builtin.find:
