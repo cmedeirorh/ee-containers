@@ -14,13 +14,13 @@ dependencies:
   system: bindep.txt
  
 options:
-  package_manager_path: /usr/bin/microdnf
+  package_manager_path: /usr/bin/microdnf 
  
  
-additional_build_files: []
-  # Can be used to resolve collections from private automation hub
-  #- src: ansible.cfg
-  #  dest: configs
+additional_build_files: 
+  #Can be used to resolve collections from private automation hub
+  - src: ansible.cfg
+    dest: configs
       # - src: rpms/openshift-clients-4.12.0-202307200611.p0.g49844f7.assembly.stream.el8.x86_64.rpm
       # dest: rpms
  
@@ -32,13 +32,13 @@ additional_build_steps:
     - RUN python3 -m ensurepip --upgrade
     - RUN git config --global http.sslVerify false
       #- COPY _build/rpms/*.rpm /tmp/openshift-clients.rpm
-    - RUN $PKGMGR install bash-completion
+    - RUN $PKGMGR install bash-completion 
       #- RUN rpm -ivh /tmp/openshift-clients.rpm
-  #prepend_galaxy:
-    # Add custom ansible.cfg which defines collection install sources
-    #- COPY _build/configs/ansible.cfg /etc/ansible/ansible.cfg
+  prepend_galaxy:
+    #Add custom ansible.cfg which defines collection install sources
+    - COPY _build/configs/ansible.cfg /etc/ansible/ansible.cfg
   append_final:
-    - RUN microdnf install -y --enablerepo=rhocp-4.17-for-rhel-9-x86_64-rpms --releasever=9.5 openshift-clients
+    - RUN microdnf install -y --enablerepo=rhocp-4.17-for-rhel-9-x86_64-rpms --releasever=9.5 openshift-clients --skip-unavailable --allowerasing 
     - RUN ansible-galaxy collection install redhat.openshift
 
  
