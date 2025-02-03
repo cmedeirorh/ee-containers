@@ -1,12 +1,12 @@
 ---
-- name: Comprehensive Setup Playbook
+- name: EE/DE Builder for Ansible Automation Platform 2.5 
   hosts: localhost
   become: true
   pre_tasks:
     - name: Verify internet connection
       command: ping -c 4 google.com
       register: ping_result
-      ignore_errors: true
+      ignore_errors: yes
 
     - name: Fail if no internet connection
       fail:
@@ -18,13 +18,55 @@
         name:
           - python3-pip
           - ansible-core
-          - git
         state: present
 
-    - name: Clone GitHub repository
-      git:
-        repo: 'https://github.com/nickarellano/ee-containers'
-        dest: /tmp/ee-containers
+    - name: Build a numeric menu for the user to select environment
+      block:
+        - name: Find environment directories
+          find:
+            paths: "environments/"
+            patterns: "ee-*"
+            recurse: no
+            file_type: directory
+          register: found_ee_dirs
+
+        - name: Find additional environment directories
+          find:
+            paths: "environments/"
+            patterns: "de-*"
+            recurse: no
+            file_type: directory
+          register: found_de_dirs
+
+        - name: Combine and sort environment directories
+          set_fact:
+            all_dirs: "{{ (found_ee_dirs.files + found_de_dirs.files) | sort(attribute='path') }}"
+
+        - name: Build menu options string
+          set_fact:
+            menu_options: |
+              {% for item in all_dirs %}
+              {{ loop.index }}: {{ item.path | basename }}
+              {% endfor %}
+
+        - name: Display menu options
+          debug:
+            msg: "{{ menu_options }}"
+
+        - name: Prompt user for environment selection
+          pause:
+            prompt: |
+              Select an environment:
+              {{ menu_options }}
+          register: user_selection
+
+        - name: Set selected environment
+          set_fact:
+            selected_env: "{{ all_dirs[user_selection.user_input | int - 1].path }}"
+
+        - name: Debug selected environment
+          debug:
+            var: selected_env
 
   vars_prompt:
     - name: rh_username
@@ -50,37 +92,53 @@
         cmd: /usr/bin/python3 -m pip install --ignore-installed -r /tmp/ee-containers/requirements.txt
       when: requirements_txt.stat.exists
 
-    - name: Check if requirements.yaml exists
+    - name: Check if requirements.yml exists
       ansible.builtin.stat:
-        path: /tmp/ee-containers/requirements.yaml
-      register: requirements_yaml
+        path: /tmp/ee-containers/requirements.yml
+      register: requirements_yml
 
-    - name: Ensure ansible-galaxy collections in requirements.yaml are installed
+    - name: Ensure ansible-galaxy collections in requirements.yml are installed
       ansible.builtin.command:
-        cmd: "ansible-galaxy collection install -r /tmp/ee-containers/requirements.yaml"
-      when: requirements_yaml.stat.exists
+        cmd: "ansible-galaxy collection install -r /tmp/ee-containers/requirements.yml"
+      when: requirements_yml.stat.exists
 
-    - name: List available environments
-      ansible.builtin.find:
-        paths: /tmp/ee-containers/environments
-        recurse: no
-        file_type: directory
-      register: env_dirs
-
-    - name: Build a numeric menu for the user to select environment
-      pause:
-        prompt: |
-          Select an environment:
-          {%- for item in env_dirs.files -%}
-          {{ loop.index }}. {{ item.path }}
-          {% endfor %}
-      register: env_selection
-
-    - name: Set selected environment
-      ansible.builtin.set_fact:
-        selected_env: "{{ env_dirs.files[env_selection.user_input | int - 1].path }}"
-
-    - name: Build image using ansible-builder based on user's selection
+    - name: Ensure ansible-galaxy collections in requirements.yml are installed
       ansible.builtin.command:
-        cmd: "/usr/local/bin/ansible-builder build -f {{ selected_env }}/execution-environment.yaml --context /tmp/ee-containers"
-      changed_when: false
+        cmd: "ansible-galaxy collection install -r /tmp/ee-containers/requirements.yml"
+      when: requirements_yml.stat.exists
+
+    - name: Ensure ansible-galaxy collections in requirements.yml are installed
+      ansible.builtin.command:
+        cmd: "ansible-galaxy collection install -r /tmp/ee-containers/requirements.yml"
+      when: requirements_yml.stat.exists
+
+    - name: Ensure ansible-galaxy collections in requirements.yml are installed
+      ansible.builtin.command:
+        cmd: "ansible-galaxy collection install -r /tmp/ee-containers/requirements.yml"
+      when: requirements_yml.stat.exists
+
+    - name: Start image build process in the background
+      ansible.builtin.shell: "nohup /usr/local/bin/ansible-builder build --prune-images --no-cache -v3 -f {{ selected_env }}/execution-environment.yml --context /tmp/ee-containers --tag {{ selected_env | basename }} > /tmp/build.log 2>&1 & echo $!"
+      register: build_pid
+
+    - name: Monitor build process and tee log to console
+      shell: |
+        while ps -p {{ build_pid.stdout }} > /dev/null 2>&1; do
+          tail -n +1 /tmp/build.log
+          sleep 10
+        done
+      async: 600
+      poll: 10
+
+    - name: Display build log
+      command: cat /tmp/build.log
+      register: build_log
+
+    - name: Display build log output
+      debug:
+        var: build_log.stdout
+
+    - name: Clean up build log
+      file:
+        path: /tmp/build.log
+        state: absent
