@@ -3,15 +3,17 @@
   hosts: localhost
   become: true
   pre_tasks:
-    - name: Verify internet connection
-      command: ping -c 4 google.com
-      register: ping_result
-      ignore_errors: yes
+#    - name: Verify internet connection
+#      uri:
+#        url: http://www.google.com
+#        return_content: no
+#      register: ping_result
+#      ignore_errors: yes
 
-    - name: Fail if no internet connection
-      fail:
-        msg: "No internet connection detected."
-      when: ping_result.rc != 0
+#    - name: Fail if no internet connection
+#      fail:
+#        msg: "No internet connection detected."
+#j      when: ping_result.status != 200
 
     - name: Ensure python3-pip and ansible-core are installed via dnf
       dnf:
@@ -19,6 +21,11 @@
           - python3-pip
           - ansible-core
         state: present
+
+    - name: Upgrade ansible-core, ansible-navigator, and ansible-lint using pip
+      ansible.builtin.command:
+        cmd: /usr/bin/python3 -m pip install --upgrade --user ansible-core ansible-navigator ansible-creator ansible-lint
+      when: ansible_distribution == "RedHat" or ansible_distribution == "CentOS"
 
     - name: Build a numeric menu for the user to select environment
       block:
